@@ -1,6 +1,6 @@
 {
   "name": "triplex-vsce",
-  "displayName": "Triplex for VS Code",
+  "displayName": "Triplex for VS Code (fork)",
   "version": "0.72.5",
   "private": true,
   "description": "Your visual workspace for React / Three Fiber.",
@@ -25,7 +25,7 @@
   },
   "license": "SEE LICENSE IN LICENSE",
   "qna": "https://triplex.dev/docs/community/faq",
-  "publisher": "trytriplex",
+  "publisher": "ctrlshiftbryan",
   "main": "./hook-extension.js",
   "files": [
     "!hook-extension.js",
