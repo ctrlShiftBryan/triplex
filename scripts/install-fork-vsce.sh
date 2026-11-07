@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Builds the fork's VS Code extension from HEAD and installs it into the
-# VS Code server on this machine (Remote-SSH), replacing the marketplace build.
+# Builds the fork from HEAD and installs, on this machine:
+#   - the ba-triplex-mark CLI as ~/.local/bin/ba-triplex-mark, always;
+#   - the VS Code extension into the newest VS Code server (Remote-SSH), else
+#     the local `code` CLI, else skips with a note; it replaces the
+#     marketplace build.
 #
 # The release steps delete src/ folders and rewrite package.json files, so the
 # build runs in a separate worktree and leaves this checkout untouched.
@@ -31,6 +34,18 @@ echo "Building triplex-vsce at ${SHA:0:8} in $BUILD"
 # Same steps as .github/workflows/release-vscode.yml.
 pnpm i --force --public-hoist-pattern='*' --node-linker=hoisted
 pnpm build
+
+# The marker CLI is one bundled file; install it before the extension steps.
+pnpm --filter ba-triplex-mark build
+BIN_DIR="$HOME/.local/bin"
+mkdir -p "$BIN_DIR"
+install -m 755 packages/ba-triplex-mark/dist/ba-triplex-mark.cjs "$BIN_DIR/ba-triplex-mark"
+echo "Installed $BIN_DIR/ba-triplex-mark"
+case ":$PATH:" in
+  *":$BIN_DIR:"*) ;;
+  *) echo "Note: $BIN_DIR is not on PATH; add it to run ba-triplex-mark." >&2 ;;
+esac
+
 # rimraf's move-remove renames into TMPDIR, which must be on the same disk.
 mkdir -p "$BUILD.tmp"
 TMPDIR="$BUILD.tmp" pnpm clean:drop-folders
@@ -42,15 +57,18 @@ VSIX="$(find apps/vscode/out -maxdepth 1 -name '*.vsix' -print -quit)"
 VSIX="$BUILD/$VSIX"
 echo "Built $VSIX"
 
-# Newest VS Code server on this machine; extensions are shared across versions.
-SERVER="$(ls -td "$HOME"/.vscode-server/cli/servers/Stable-*/server/bin/code-server 2>/dev/null | head -n1 || true)"
-if [ -n "$SERVER" ]; then
-  "$SERVER" --install-extension "$VSIX" --force
-  if "$SERVER" --list-extensions | grep -qx "$PUBLIC_ID"; then
-    "$SERVER" --uninstall-extension "$PUBLIC_ID"
-  fi
-else
-  echo "No VS Code server found under ~/.vscode-server; install $VSIX by hand." >&2
+# Newest VS Code server on this machine (Remote-SSH), else the local code CLI;
+# extensions are shared across server versions.
+CODE="$(ls -td "$HOME"/.vscode-server/cli/servers/Stable-*/server/bin/code-server 2>/dev/null | head -n1 || true)"
+[ -n "$CODE" ] || CODE="$(command -v code || true)"
+if [ -z "$CODE" ]; then
+  echo "No VS Code server under ~/.vscode-server and no code CLI; skipped the extension. Install $VSIX by hand." >&2
+  exit 0
+fi
+
+"$CODE" --install-extension "$VSIX" --force
+if "$CODE" --list-extensions | grep -qx "$PUBLIC_ID"; then
+  "$CODE" --uninstall-extension "$PUBLIC_ID"
 fi
 
 echo "Done. Run 'Developer: Reload Window' in VS Code."
