@@ -11,6 +11,7 @@ import { version } from "../../package.json";
 import * as output from "../util/log/vscode";
 import { TriplexCodelensProvider } from "./codelens";
 import { TriplexEditorProvider } from "./editor";
+import { registerViewerMode } from "./viewer-mode";
 
 const log = output.logger("main");
 
@@ -24,6 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     TriplexCodelensProvider.register(),
     TriplexEditorProvider.register(context, { fgEnvironmentOverride }),
+    registerViewerMode(),
     output,
   );
 

@@ -16,6 +16,7 @@ import { createWSEvents } from "@triplex/websocks-client/events";
 import * as vscode from "vscode";
 import { logger } from "../../util/log/vscode";
 import { on, sendVSCE } from "../util/bridge";
+import { fileChoices } from "../viewer-mode";
 import { TriplexDocument } from "./document";
 import { initializeWebviewPanel } from "./panel";
 import { type TriplexProjectResolver } from "./project";
@@ -295,6 +296,8 @@ export class TriplexEditorProvider
       }),
       vscode.commands.registerCommand("triplex.open-file", async (args) => {
         const uri = vscode.Uri.file(args.path);
+        // Jumping to code keeps the file as source, also with BA Toggle - Triplex on.
+        fileChoices.set(normalize(args.path), "source");
         const position = new vscode.Position(args.line - 1, args.column - 1);
 
         const document = await vscode.workspace.openTextDocument(uri);
@@ -379,7 +382,11 @@ export class TriplexEditorProvider
       }),
       vscode.commands.registerCommand(
         "triplex.start",
-        async (ctx?: { exportName?: string; path?: string }) => {
+        async (ctx?: {
+          exportName?: string;
+          path?: string;
+          viewColumn?: vscode.ViewColumn;
+        }) => {
           const scopedFileName = normalize(
             ctx?.path ||
               vscode.window.activeTextEditor?.document.fileName ||
@@ -394,7 +401,10 @@ export class TriplexEditorProvider
             TriplexEditorProvider.panelCache.get(scopedFileName);
           const nextExportName =
             ctx?.exportName || getFallbackExportName(scopedFileName);
-          const sourceTabGroup = vscode.window.tabGroups.activeTabGroup;
+          const sourceTabGroup =
+            vscode.window.tabGroups.all.find(
+              (group) => group.viewColumn === ctx?.viewColumn,
+            ) ?? vscode.window.tabGroups.activeTabGroup;
 
           if (existingPanel) {
             sendVSCE(existingPanel.webview, "vscode:request-open-component", {
@@ -414,7 +424,7 @@ export class TriplexEditorProvider
                 query: `triplex&exportName=${nextExportName}`,
               }),
               TriplexEditorProvider.viewType,
-              vscode.ViewColumn.Active,
+              sourceTabGroup.viewColumn,
             );
           }
 

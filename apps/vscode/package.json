@@ -101,8 +101,32 @@
         "category": "Triplex",
         "command": "triplex.reload-scene",
         "title": "Reload Scene"
+      },
+      {
+        "command": "baTriplex.toggle",
+        "title": "BA Toggle - Triplex"
+      },
+      {
+        "category": "BA",
+        "command": "baTriplex.showSource",
+        "title": "Show Source"
+      },
+      {
+        "category": "BA",
+        "command": "baTriplex.showViewer",
+        "title": "Show Triplex Viewer"
       }
     ],
+    "configuration": {
+      "title": "BA Triplex",
+      "properties": {
+        "baTriplex.openInViewer": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Open files marked `// @triplex-viewer` in the Triplex viewer instead of as source. Toggle it with **BA Toggle - Triplex**; mark files with `ba-triplex-mark --write`."
+        }
+      }
+    },
     "customEditors": [
       {
         "viewType": "triplex.editor",
@@ -195,14 +219,22 @@
         },
         {
           "command": "triplex.start",
-          "when": "(resourceExtname === .jsx || resourceExtname === .tsx) && activeCustomEditorId != 'triplex.editor'"
+          "when": "(resourceExtname === .jsx || resourceExtname === .tsx) && baTriplex.hasExportedComponent && activeCustomEditorId != 'triplex.editor'"
+        },
+        {
+          "command": "baTriplex.showSource",
+          "when": "activeCustomEditorId == 'triplex.editor'"
+        },
+        {
+          "command": "baTriplex.showViewer",
+          "when": "(resourceExtname === .jsx || resourceExtname === .tsx) && baTriplex.hasExportedComponent && activeCustomEditorId != 'triplex.editor'"
         }
       ],
       "editor/title": [
         {
           "command": "triplex.start",
           "group": "navigation",
-          "when": "(resourceExtname === .jsx || resourceExtname === .tsx) && activeCustomEditorId != 'triplex.editor'"
+          "when": "(resourceExtname === .jsx || resourceExtname === .tsx) && baTriplex.hasExportedComponent && activeCustomEditorId != 'triplex.editor'"
         }
       ],
       "webview/context": [
@@ -267,6 +299,7 @@
     "@vscode/vsce": "^2.26.0",
     "anymatch": "^3.1.3",
     "autoprefixer": "^10.4.16",
+    "ba-triplex-mark": "0.0.0",
     "babel-plugin-react-compiler": "19.1.0-rc.2",
     "electron": "34.3.0",
     "electron-builder": "^25.1.3",
