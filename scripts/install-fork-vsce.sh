@@ -6,6 +6,12 @@
 # build runs in a separate worktree and leaves this checkout untouched.
 set -euo pipefail
 
+# The packaging deps break on Node 26 (SlowBuffer was removed); use Node 22
+# as pinned by package.json "volta".
+if [ -z "${TRIPLEX_NODE_SWITCHED:-}" ] && ! node -v | grep -q '^v22\.'; then
+  exec env TRIPLEX_NODE_SWITCHED=1 mise exec node@22 -- "$0" "$@"
+fi
+
 ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 BUILD="${TRIPLEX_BUILD_DIR:-$ROOT/../triplex-worktrees/vsix-build}"
 PUBLIC_ID="trytriplex.triplex-vsce"
