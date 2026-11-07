@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FileChoices,
+  isNewFileTab,
   shouldOpenInViewer,
   tabsToSwap,
   type FileChoice,
@@ -89,6 +90,20 @@ describe("shouldOpenInViewer", () => {
         newTab: true,
       }),
     ).toBe(false);
+  });
+});
+
+describe("isNewFileTab", () => {
+  it("counts a file that wasn't open as a new tab", () => {
+    expect(isNewFileTab("a", { closed: [], openElsewhere: ["b"] })).toBe(true);
+  });
+
+  it("does not count a split of a file open in another tab", () => {
+    expect(isNewFileTab("a", { closed: [], openElsewhere: ["a"] })).toBe(false);
+  });
+
+  it("does not count a tab moved to another group", () => {
+    expect(isNewFileTab("a", { closed: ["a"], openElsewhere: [] })).toBe(false);
   });
 });
 

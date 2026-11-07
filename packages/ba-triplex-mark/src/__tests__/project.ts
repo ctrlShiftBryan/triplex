@@ -58,15 +58,15 @@ export const fixtureFiles: Record<string, string> = {
     }
   `,
   "src/cycle-a.tsx": `
-    import { B } from "./cycle-b";
-    export function A() {
-      return <B />;
+    import { CycleB } from "./cycle-b";
+    export function CycleA() {
+      return <CycleB />;
     }
   `,
   "src/cycle-b.tsx": `
-    import { A } from "./cycle-a";
-    export function B() {
-      return <A />;
+    import { CycleA } from "./cycle-a";
+    export function CycleB() {
+      return <CycleA />;
     }
   `,
   "src/dom-default.tsx": `

@@ -7,11 +7,12 @@
 import { readFileSync } from "node:fs";
 import { normalize } from "@triplex/lib/path";
 import { inferExports } from "@triplex/server";
-import { hasMarker } from "ba-triplex-mark/marker";
+import { hasIgnoreMarker, hasMarker } from "ba-triplex-mark/marker";
 import * as vscode from "vscode";
 import { logger } from "../../util/log/vscode";
 import {
   FileChoices,
+  isNewFileTab,
   shouldOpenInViewer,
   tabsToSwap,
   type OpenTab,
@@ -53,6 +54,11 @@ function readSource(uri: vscode.Uri): string {
   }
 }
 
+/** The ignore comment wins over a marker added before it. */
+function isMarked(code: string): boolean {
+  return hasMarker(code) && !hasIgnoreMarker(code);
+}
+
 function hasExportedComponent(code: string): boolean {
   return inferExports(code).length > 0;
 }
@@ -81,7 +87,7 @@ function describeTab(tab: vscode.Tab): DescribedTab | undefined {
   return {
     dirty: tab.isDirty,
     kind,
-    marked: hasMarker(readSource(uri)),
+    marked: isMarked(readSource(uri)),
     path: normalize(uri.fsPath),
     tab,
     uri,
@@ -180,8 +186,24 @@ function updateContextKeys() {
 }
 
 /** Auto-opens newly opened marked source tabs in the viewer when the mode is on. */
-function onOpenedTabs(tabs: readonly vscode.Tab[]) {
-  for (const tab of tabs) {
+function tabPath(tab: vscode.Tab): string | undefined {
+  const { input } = tab;
+  return input instanceof vscode.TabInputText ||
+    input instanceof vscode.TabInputCustom
+    ? normalize(input.uri.fsPath)
+    : undefined;
+}
+
+/** Auto-opens newly opened marked source tabs in the viewer when the mode is on. */
+function onOpenedTabs(event: vscode.TabChangeEvent) {
+  const opened = new Set(event.opened);
+  const openElsewhere = vscode.window.tabGroups.all
+    .flatMap((group) => group.tabs)
+    .filter((tab) => !opened.has(tab))
+    .map(tabPath);
+  const closed = event.closed.map(tabPath);
+
+  for (const tab of event.opened) {
     const described = describeTab(tab);
 
     if (
@@ -191,7 +213,7 @@ function onOpenedTabs(tabs: readonly vscode.Tab[]) {
         choice: fileChoices.get(described.path),
         enabled: isEnabled(),
         marked: described.marked,
-        newTab: true,
+        newTab: isNewFileTab(described.path, { closed, openElsewhere }),
       }) ||
       !hasExportedComponent(readSource(described.uri))
     ) {
@@ -215,7 +237,7 @@ export function registerViewerMode(): vscode.Disposable {
       }
     }),
     vscode.window.tabGroups.onDidChangeTabs((event) => {
-      onOpenedTabs(event.opened);
+      onOpenedTabs(event);
     }),
     vscode.commands.registerCommand("baTriplex.toggle", toggle),
     vscode.commands.registerCommand("baTriplex.showSource", showSource),

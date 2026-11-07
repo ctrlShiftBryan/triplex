@@ -71,7 +71,10 @@ describe("classifier", () => {
   });
 
   it("stops at an import cycle", () => {
-    expect(classifyFixture("src/cycle-a.tsx").root).toBeUndefined();
+    expect(classifyFixture("src/cycle-a.tsx")).toEqual({
+      exportName: "CycleA",
+      root: undefined,
+    });
   });
 
   it("returns no export for a file without exported components", () => {
@@ -79,5 +82,42 @@ describe("classifier", () => {
       exportName: undefined,
       root: undefined,
     });
+  });
+});
+
+describe("classifier across a cycle with a host element", () => {
+  // RingA renders <RingB /> and a <mesh />; RingB renders <RingA />. At
+  // runtime either file is 3D: the first assignment sees no triplexMeta on
+  // the other component yet and falls back to its own host element.
+  const files = {
+    "package.json": "{}",
+    "ring-a.tsx": `
+      import { RingB } from "./ring-b";
+      export function RingA() {
+        return (
+          <>
+            <RingB />
+            <mesh />
+          </>
+        );
+      }
+    `,
+    "ring-b.tsx": `
+      import { RingA } from "./ring-a";
+      export function RingB() {
+        return <RingA />;
+      }
+    `,
+  };
+
+  it.each([
+    ["ring-a.tsx", "ring-b.tsx"],
+    ["ring-b.tsx", "ring-a.tsx"],
+  ])("classifies both files as 3D in order %s, %s", (first, second) => {
+    const root = createProject(files);
+    const classify = createClassifier();
+
+    expect(classify(join(root, first)).root).toBe("react-three-fiber");
+    expect(classify(join(root, second)).root).toBe("react-three-fiber");
   });
 });

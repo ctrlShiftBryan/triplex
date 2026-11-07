@@ -35,6 +35,20 @@ export function shouldOpenInViewer(event: OpenEvent): boolean {
   return event.marked;
 }
 
+/**
+ * A tab opened on a file that wasn't open: not a split (the file is open in
+ * another tab) and not a move (its old tab closed in the same change).
+ */
+export function isNewFileTab(
+  path: string,
+  others: {
+    closed: (string | undefined)[];
+    openElsewhere: (string | undefined)[];
+  },
+): boolean {
+  return !others.openElsewhere.includes(path) && !others.closed.includes(path);
+}
+
 export interface OpenTab {
   dirty: boolean;
   kind: "source" | "viewer";

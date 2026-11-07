@@ -42,6 +42,12 @@ export function createClassifier() {
   const roots = new Map<string, ComponentRoot>();
   /** The components being evaluated, to stop at an import cycle. */
   const inProgress = new Set<string>();
+  /**
+   * Cycles cut so far. A cut child reads as undefined, as an unassigned
+   * triplexMeta does at runtime, but the answer then depends on which file was
+   * the entry, so results computed across a cut are never cached.
+   */
+  let cycleCuts = 0;
 
   /**
    * A file the classifier follows into; one that fails to parse counts as not
@@ -118,10 +124,16 @@ export function createClassifier() {
     }
 
     const info = load(file);
-    if (!info || inProgress.has(key)) {
+    if (!info) {
       return undefined;
     }
 
+    if (inProgress.has(key)) {
+      cycleCuts++;
+      return undefined;
+    }
+
+    const cutsBefore = cycleCuts;
     inProgress.add(key);
 
     try {
@@ -137,7 +149,9 @@ export function createClassifier() {
           ? rootOfLocal(definition.file, definition.local)
           : undefined;
 
-      roots.set(key, root);
+      if (cycleCuts === cutsBefore) {
+        roots.set(key, root);
+      }
       return root;
     } finally {
       inProgress.delete(key);

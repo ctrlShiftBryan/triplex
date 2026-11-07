@@ -5,33 +5,39 @@
  * see this files license find the nearest LICENSE file up the source tree.
  */
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, extname, join, resolve, sep } from "node:path";
 
 const EXTENSIONS = [".tsx", ".ts", ".jsx", ".js", ".mts", ".mjs"];
 
-interface PackageImports {
+interface PackageJson {
   dir: string;
-  imports: Record<string, unknown>;
+  imports: Record<string, unknown> | undefined;
 }
 
 interface TsconfigPaths {
-  /** The directory `paths` targets and `baseUrl` lookups resolve from. */
-  base: string;
-  baseUrl: boolean;
-  paths: Record<string, string[]>;
+  /** compilerOptions.baseUrl, as an absolute directory. */
+  baseUrl: string | undefined;
+  paths: Record<string, unknown> | undefined;
+  /**
+   * The directory of the config that set `paths`; targets resolve from it
+   * without a baseUrl.
+   */
+  pathsDir: string | undefined;
 }
 
 /**
- * Resolves an import to a source file in the project: relative paths, explicit
- * or missing extensions, package.json "imports" (#aliases) and tsconfig
- * paths/baseUrl. Bare packages (node_modules) resolve to undefined; they are
- * never followed.
+ * Resolves an import to a source file in the project: relative and
+ * root-absolute paths, explicit or missing extensions, package.json "imports"
+ * (#aliases), tsconfig paths/baseUrl (with `extends` and `references`), and
+ * workspace packages linked into node_modules. Packages installed in
+ * node_modules resolve to undefined; they are never followed.
  */
 export function createResolver() {
-  const packageCache = new Map<string, PackageImports | null>();
-  const tsconfigCache = new Map<string, TsconfigPaths | null>();
+  const packageCache = new Map<string, PackageJson | null>();
+  const tsconfigCache = new Map<string, TsconfigPaths[]>();
 
-  function nearestPackage(dir: string): PackageImports | null {
+  function nearestPackage(dir: string): PackageJson | null {
     const cached = packageCache.get(dir);
     if (cached !== undefined) {
       return cached;
@@ -39,12 +45,15 @@ export function createResolver() {
 
     const file = join(dir, "package.json");
     const parent = dirname(dir);
-    let result: PackageImports | null;
+    let result: PackageJson | null;
 
     if (existsSync(file)) {
       const json = readJson(file);
-      const imports = isRecord(json) && isRecord(json.imports) && json.imports;
-      result = imports ? { dir, imports } : null;
+      result = {
+        dir,
+        imports:
+          isRecord(json) && isRecord(json.imports) ? json.imports : undefined,
+      };
     } else {
       result = parent === dir ? null : nearestPackage(parent);
     }
@@ -53,7 +62,11 @@ export function createResolver() {
     return result;
   }
 
-  function nearestTsconfig(dir: string): TsconfigPaths | null {
+  /**
+   * The nearest tsconfig.json and the configs it references (Vite's
+   * tsconfig.app.json).
+   */
+  function nearestTsconfigs(dir: string): TsconfigPaths[] {
     const cached = tsconfigCache.get(dir);
     if (cached !== undefined) {
       return cached;
@@ -61,11 +74,19 @@ export function createResolver() {
 
     const file = join(dir, "tsconfig.json");
     const parent = dirname(dir);
-    const result = existsSync(file)
-      ? loadTsconfig(file, new Set())
-      : parent === dir
-        ? null
-        : nearestTsconfig(parent);
+    let result: TsconfigPaths[] = [];
+
+    if (existsSync(file)) {
+      const json = readJson(file);
+      const references =
+        isRecord(json) && Array.isArray(json.references) ? json.references : [];
+
+      result = [file, ...references.flatMap((ref) => referencePath(dir, ref))]
+        .map((config) => loadTsconfig(config, new Set()))
+        .filter((config): config is TsconfigPaths => !!config);
+    } else if (parent !== dir) {
+      result = nearestTsconfigs(parent);
+    }
 
     tsconfigCache.set(dir, result);
     return result;
@@ -76,17 +97,42 @@ export function createResolver() {
     specifier: string,
   ): string | undefined {
     const pkg = nearestPackage(fromDir);
-    if (!pkg) {
+    if (!pkg?.imports) {
       return undefined;
     }
 
-    const target = matchPattern(pkg.imports, specifier, (value, star) => {
+    const targets = matchPattern(pkg.imports, specifier, (value, star) => {
       const path = conditionTarget(value);
       return path ? [path.replaceAll("*", star)] : [];
     });
 
-    for (const path of target) {
-      const file = resolveFile(resolve(pkg.dir, path));
+    return firstFile(targets.map((path) => resolve(pkg.dir, path)));
+  }
+
+  function resolveTsconfigPath(
+    fromDir: string,
+    specifier: string,
+  ): string | undefined {
+    for (const config of nearestTsconfigs(fromDir)) {
+      const base = config.baseUrl ?? config.pathsDir;
+      const targets =
+        base && config.paths
+          ? matchPattern(config.paths, specifier, (value, star) =>
+              Array.isArray(value)
+                ? value.flatMap((path) =>
+                    typeof path === "string"
+                      ? [resolve(base, path.replaceAll("*", star))]
+                      : [],
+                  )
+                : [],
+            )
+          : [];
+      const file =
+        firstFile(targets) ??
+        (config.baseUrl
+          ? resolveFile(resolve(config.baseUrl, specifier))
+          : undefined);
+
       if (file) {
         return file;
       }
@@ -95,33 +141,23 @@ export function createResolver() {
     return undefined;
   }
 
-  function resolveTsconfigPath(
-    fromDir: string,
+  /**
+   * A workspace package linked into node_modules resolves to its real path
+   * outside it.
+   */
+  function resolveWorkspacePackage(
+    fromFile: string,
     specifier: string,
   ): string | undefined {
-    const config = nearestTsconfig(fromDir);
-    if (!config) {
+    try {
+      const file = createRequire(fromFile).resolve(specifier);
+      return !file.includes(`${sep}node_modules${sep}`) &&
+        EXTENSIONS.includes(extname(file))
+        ? file
+        : undefined;
+    } catch {
       return undefined;
     }
-
-    const targets = matchPattern(config.paths, specifier, (value, star) =>
-      Array.isArray(value)
-        ? value.flatMap((path) =>
-            typeof path === "string" ? [path.replaceAll("*", star)] : [],
-          )
-        : [],
-    );
-
-    for (const path of targets) {
-      const file = resolveFile(resolve(config.base, path));
-      if (file) {
-        return file;
-      }
-    }
-
-    return config.baseUrl
-      ? resolveFile(resolve(config.base, specifier))
-      : undefined;
   }
 
   return function resolveImport(
@@ -130,15 +166,27 @@ export function createResolver() {
   ): string | undefined {
     const fromDir = dirname(fromFile);
 
-    if (specifier.startsWith(".") || specifier.startsWith("/")) {
+    if (specifier.startsWith(".")) {
       return resolveFile(resolve(fromDir, specifier));
+    }
+
+    if (specifier.startsWith("/")) {
+      // A bundler such as Vite resolves /src/x from the project root.
+      const root = nearestPackage(fromDir)?.dir;
+      return (
+        resolveFile(specifier) ??
+        (root ? resolveFile(join(root, specifier)) : undefined)
+      );
     }
 
     if (specifier.startsWith("#")) {
       return resolvePackageImport(fromDir, specifier);
     }
 
-    return resolveTsconfigPath(fromDir, specifier);
+    return (
+      resolveTsconfigPath(fromDir, specifier) ??
+      resolveWorkspacePackage(fromFile, specifier)
+    );
   };
 }
 
@@ -158,6 +206,17 @@ function resolveFile(path: string): string | undefined {
   ];
 
   return candidates.find(isFile);
+}
+
+function firstFile(paths: string[]): string | undefined {
+  for (const path of paths) {
+    const file = resolveFile(path);
+    if (file) {
+      return file;
+    }
+  }
+
+  return undefined;
 }
 
 function isFile(path: string): boolean {
@@ -212,7 +271,7 @@ function matchPattern(
 
 /**
  * The path of an "imports" target: a string, or the first string in its
- * conditions.
+ * conditions, skipping "types" (declarations have no components to follow).
  */
 function conditionTarget(value: unknown): string | undefined {
   if (typeof value === "string") {
@@ -224,14 +283,30 @@ function conditionTarget(value: unknown): string | undefined {
   }
 
   if (isRecord(value)) {
-    return Object.values(value).map(conditionTarget).find(Boolean);
+    return Object.entries(value)
+      .filter(([condition]) => condition !== "types")
+      .map(([, target]) => conditionTarget(target))
+      .find(Boolean);
   }
 
   return undefined;
 }
 
+function referencePath(dir: string, reference: unknown): string[] {
+  if (!isRecord(reference) || typeof reference.path !== "string") {
+    return [];
+  }
+
+  const path = resolve(dir, reference.path);
+  return [path.endsWith(".json") ? path : join(path, "tsconfig.json")];
+}
+
+/**
+ * A tsconfig's baseUrl and paths, following relative `extends` (a string or an
+ * array).
+ */
 function loadTsconfig(file: string, seen: Set<string>): TsconfigPaths | null {
-  if (seen.has(file)) {
+  if (seen.has(file) || !isFile(file)) {
     return null;
   }
   seen.add(file);
@@ -242,31 +317,44 @@ function loadTsconfig(file: string, seen: Set<string>): TsconfigPaths | null {
   }
 
   const dir = dirname(file);
-  const options = isRecord(json.compilerOptions) ? json.compilerOptions : {};
-  const parent =
-    typeof json.extends === "string" && json.extends.startsWith(".")
-      ? loadTsconfig(
-          resolveFile(resolve(dir, json.extends)) ?? resolve(dir, json.extends),
-          seen,
-        )
-      : null;
-  const baseUrl =
-    typeof options.baseUrl === "string"
-      ? resolve(dir, options.baseUrl)
-      : undefined;
-  const paths = isRecord(options.paths)
-    ? (options.paths as Record<string, string[]>)
-    : undefined;
+  const parents = (
+    Array.isArray(json.extends) ? json.extends : [json.extends]
+  ).filter(
+    (parent): parent is string =>
+      typeof parent === "string" && parent.startsWith("."),
+  );
+  // Later configs in `extends` win, and the config's own options win over all.
+  const merged: TsconfigPaths = {
+    baseUrl: undefined,
+    paths: undefined,
+    pathsDir: undefined,
+  };
 
-  if (!paths && !baseUrl) {
-    return parent;
+  for (const parent of parents) {
+    const path = resolve(dir, parent);
+    const config = loadTsconfig(
+      path.endsWith(".json") ? path : `${path}.json`,
+      seen,
+    );
+    merged.baseUrl = config?.baseUrl ?? merged.baseUrl;
+    if (config?.paths) {
+      merged.paths = config.paths;
+      merged.pathsDir = config.pathsDir;
+    }
   }
 
-  return {
-    base: baseUrl ?? (paths ? dir : (parent?.base ?? dir)),
-    baseUrl: Boolean(baseUrl) || Boolean(parent?.baseUrl),
-    paths: paths ?? parent?.paths ?? {},
-  };
+  const options = isRecord(json.compilerOptions) ? json.compilerOptions : {};
+
+  if (typeof options.baseUrl === "string") {
+    merged.baseUrl = resolve(dir, options.baseUrl);
+  }
+
+  if (isRecord(options.paths)) {
+    merged.paths = options.paths;
+    merged.pathsDir = dir;
+  }
+
+  return merged;
 }
 
 function readJson(file: string): unknown {
