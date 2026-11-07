@@ -1,0 +1,32 @@
+{
+  "name": "ba-triplex-mark",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Adds the // @triplex-viewer marker to 3D component files so BA Triplex opens them in the viewer.",
+  "license": "SEE LICENSE IN LICENSE",
+  "exports": {
+    ".": "./src/index.ts",
+    "./marker": "./src/marker.ts"
+  },
+  "main": "./src/index.ts",
+  "bin": {
+    "ba-triplex-mark": "./dist/ba-triplex-mark.cjs"
+  },
+  "scripts": {
+    "build": "esbuild src/bin.ts --bundle --platform=node --target=node18 --format=cjs --outfile=dist/ba-triplex-mark.cjs --external:@babel/preset-typescript --banner:js=\"#!/usr/bin/env node\"",
+    "typedef": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@babel/core": "^7.24.5",
+    "@babel/types": "^7.24.5",
+    "@triplex/client": "workspace:*",
+    "@triplex/lib": "workspace:*",
+    "@triplex/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "@types/node": "^22.15.17",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.8.3"
+  }
+}

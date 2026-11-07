@@ -1296,6 +1296,37 @@ importers:
         specifier: '*'
         version: 6.6.20(@react-three/fiber@9.1.2(@types/react@19.1.6)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.172.0))(@types/react@19.1.6)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)(three@0.172.0)
 
+  packages/ba-triplex-mark:
+    dependencies:
+      '@babel/core':
+        specifier: ^7.24.5
+        version: 7.27.3
+      '@babel/types':
+        specifier: ^7.24.5
+        version: 7.27.3
+      '@triplex/client':
+        specifier: workspace:*
+        version: link:../@triplex/client
+      '@triplex/lib':
+        specifier: workspace:*
+        version: link:../lib
+      '@triplex/server':
+        specifier: workspace:*
+        version: link:../@triplex/server
+    devDependencies:
+      '@types/babel__core':
+        specifier: ^7.20.5
+        version: 7.20.5
+      '@types/node':
+        specifier: ^22.15.17
+        version: 22.15.29
+      esbuild:
+        specifier: ^0.24.2
+        version: 0.24.2
+      typescript:
+        specifier: ^5.8.3
+        version: 5.8.3
+
   packages/bridge:
     devDependencies:
       '@swc/cli':
