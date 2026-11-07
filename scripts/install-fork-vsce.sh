@@ -25,7 +25,9 @@ echo "Building triplex-vsce at ${SHA:0:8} in $BUILD"
 # Same steps as .github/workflows/release-vscode.yml.
 pnpm i --force --public-hoist-pattern='*' --node-linker=hoisted
 pnpm build
-pnpm clean:drop-folders
+# rimraf's move-remove renames into TMPDIR, which must be on the same disk.
+mkdir -p "$BUILD.tmp"
+TMPDIR="$BUILD.tmp" pnpm clean:drop-folders
 pnpm --filter triplex-vsce run prepack
 pnpm --filter triplex-vsce run pack
 
