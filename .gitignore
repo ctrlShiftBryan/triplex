@@ -10,6 +10,7 @@ dist
 # testing
 coverage
 **/__test__/tmp
+*.tmp.tsx
 .eslintcache
 /test-results/
 /playwright-report/

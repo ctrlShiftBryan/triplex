@@ -4,9 +4,10 @@
  * This repository utilizes multiple licenses across different directories. To
  * see this files license find the nearest LICENSE file up the source tree.
  */
+import { copyFileSync, rmSync } from "node:fs";
 import { join } from "@triplex/lib/path";
 import { watch } from "chokidar";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { type Mutation } from "../../types";
 import { createProject } from "../project";
 
@@ -26,6 +27,13 @@ function waitForChange(path: string) {
   });
 }
 
+// Saving writes to disk, so work on a copy of the shared fixture.
+const fixturePath = join(__dirname, "__mocks__", "box.undo-redo.tmp.tsx");
+beforeAll(() =>
+  copyFileSync(join(__dirname, "__mocks__", "box.tsx"), fixturePath),
+);
+afterAll(() => rmSync(fixturePath, { force: true }));
+
 describe("undo/redo edge cases", () => {
   it(
     "should redo to a previous state after saving",
@@ -35,9 +43,7 @@ describe("undo/redo edge cases", () => {
         templates: { newElements: "" },
         tsConfigFilePath: join(__dirname, "__mocks__", "tsconfig.json"),
       });
-      const sourceFile = project.getSourceFile(
-        join(__dirname, "__mocks__", "box.tsx"),
-      );
+      const sourceFile = project.getSourceFile(fixturePath);
 
       await sourceFile.edit((s) => {
         s.addClass({ name: "Foo" });
@@ -69,9 +75,7 @@ describe("undo/redo edge cases", () => {
       });
       const stateChangeCallback = vi.fn();
       project.onStateChange(stateChangeCallback);
-      const sourceFile = project.getSourceFile(
-        join(__dirname, "__mocks__", "box.tsx"),
-      );
+      const sourceFile = project.getSourceFile(fixturePath);
       const waitPromise = waitForChange(sourceFile.read().getFilePath());
 
       await sourceFile.edit((s) => {
@@ -95,9 +99,7 @@ describe("undo/redo edge cases", () => {
         tsConfigFilePath: join(__dirname, "__mocks__", "tsconfig.json"),
       });
       // Starts at 0
-      const sourceFile = project.getSourceFile(
-        join(__dirname, "__mocks__", "box.tsx"),
-      );
+      const sourceFile = project.getSourceFile(fixturePath);
 
       // Undo pointer now at 1
       await sourceFile.edit((s) => {
@@ -126,9 +128,7 @@ describe("undo/redo edge cases", () => {
       tsConfigFilePath: join(__dirname, "__mocks__", "tsconfig.json"),
     });
     // Starts at 0
-    const sourceFile = project.getSourceFile(
-      join(__dirname, "__mocks__", "box.tsx"),
-    );
+    const sourceFile = project.getSourceFile(fixturePath);
     const originalText = sourceFile.read().getText();
     const undoLog: [Mutation, void][] = [];
 
@@ -173,9 +173,7 @@ describe("undo/redo edge cases", () => {
       tsConfigFilePath: join(__dirname, "__mocks__", "tsconfig.json"),
     });
     // Starts at 0
-    const sourceFile = project.getSourceFile(
-      join(__dirname, "__mocks__", "box.tsx"),
-    );
+    const sourceFile = project.getSourceFile(fixturePath);
     const originalText = sourceFile.read().getText();
 
     await sourceFile.edit((s) => {
@@ -207,9 +205,7 @@ describe("undo/redo edge cases", () => {
       templates: { newElements: "" },
       tsConfigFilePath: join(__dirname, "__mocks__", "tsconfig.json"),
     });
-    const sourceFile = project.getSourceFile(
-      join(__dirname, "__mocks__", "box.tsx"),
-    );
+    const sourceFile = project.getSourceFile(fixturePath);
 
     await sourceFile.edit(() => {});
 
