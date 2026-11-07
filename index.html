@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>triplex docs</title>
+<meta name="description" content="Generated plans, explainers, incident write-ups, investigations, research and prototypes.">
+<style>
+:root { --bg:#f6f5f1; --surface:#fff; --ink:#1c1d1f; --ink-2:#4b4e55; --ink-3:#80838a; --line:#dcd9d0; --accent:#2456d6; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --bg:#131416; --surface:#1c1d20; --ink:#ecebe6; --ink-2:#b4b5b9; --ink-3:#85878d; --line:#34363b; --accent:#7c9bff; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+main { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }
+.lede { color: var(--ink-2); margin: 0 0 20px; }
+input { width: 100%; padding: 10px 12px; font: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); }
+section { margin-top: 28px; }
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3); margin: 0 0 8px; }
+h2 span { font-weight: 400; }
+ul { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+li { padding: 11px 14px; border-bottom: 1px solid var(--line); }
+li:last-child { border-bottom: 0; }
+li a { color: var(--accent); font-weight: 600; text-decoration: none; }
+li a:hover { text-decoration: underline; }
+li p { margin: 3px 0 0; color: var(--ink-2); font-size: 14px; }
+.m { color: var(--ink-3); font-size: 12.5px; margin-top: 3px; }
+details { margin-top: 28px; }
+summary { cursor: pointer; font-size: 13px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-3); font-weight: 700; margin-bottom: 8px; }
+.empty { color: var(--ink-3); margin-top: 24px; display: none; }
+</style>
+</head>
+<body>
+<main>
+<h1>triplex docs</h1>
+<p class="lede">0 generated docs. Rebuilt on every publish by the <code>ai-docs</code> skill.</p>
+<input id="q" type="search" placeholder="Search titles, descriptions, authors…" autofocus>
+
+
+<p class="empty" id="empty">No matches.</p>
+</main>
+<script>
+const q = document.getElementById('q'), pr = document.getElementById('pr'), empty = document.getElementById('empty');
+q.addEventListener('input', () => {
+  const t = q.value.trim().toLowerCase();
+  let shown = 0;
+  document.querySelectorAll('li[data-s]').forEach(li => {
+    const ok = !t || li.dataset.s.includes(t);
+    li.hidden = !ok;
+    if (ok) shown++;
+  });
+  document.querySelectorAll('section').forEach(s => { s.hidden = !s.querySelector('li:not([hidden])'); });
+  if (t && pr) pr.open = !!pr.querySelector('li:not([hidden])');
+  empty.style.display = shown ? 'none' : 'block';
+});
+</script>
+</body>
+</html>
