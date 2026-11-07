@@ -375,16 +375,11 @@ export class TriplexEditorProvider
         vscode.commands.executeCommand("triplex.start", {
           exportName: args.originExportName,
           path: args.originPath,
-          viewColumn: "replace",
         });
       }),
       vscode.commands.registerCommand(
         "triplex.start",
-        async (ctx?: {
-          exportName?: string;
-          path?: string;
-          viewColumn?: "beside" | "replace";
-        }) => {
+        async (ctx?: { exportName?: string; path?: string }) => {
           const scopedFileName = normalize(
             ctx?.path ||
               vscode.window.activeTextEditor?.document.fileName ||
@@ -399,10 +394,7 @@ export class TriplexEditorProvider
             TriplexEditorProvider.panelCache.get(scopedFileName);
           const nextExportName =
             ctx?.exportName || getFallbackExportName(scopedFileName);
-          const viewColumn =
-            ctx?.viewColumn === "replace"
-              ? vscode.ViewColumn.Active
-              : vscode.ViewColumn.Beside;
+          const sourceTabGroup = vscode.window.tabGroups.activeTabGroup;
 
           if (existingPanel) {
             sendVSCE(existingPanel.webview, "vscode:request-open-component", {
@@ -411,7 +403,7 @@ export class TriplexEditorProvider
             });
             existingPanel.reveal();
           } else {
-            vscode.commands.executeCommand(
+            await vscode.commands.executeCommand(
               "vscode.openWith",
               // We set an extra to the file path to have vscode consider it a unique file.
               // This means when we perform undo/redo/save actions it's isolated to the triplex
@@ -422,9 +414,19 @@ export class TriplexEditorProvider
                 query: `triplex&exportName=${nextExportName}`,
               }),
               TriplexEditorProvider.viewType,
-              viewColumn,
+              vscode.ViewColumn.Active,
             );
           }
+
+          // The viewer takes the place of the source tab rather than opening beside it.
+          // Tabs with unsaved changes stay open so nothing is lost.
+          const sourceTabs = sourceTabGroup.tabs.filter(
+            (tab) =>
+              tab.input instanceof vscode.TabInputText &&
+              normalize(tab.input.uri.fsPath) === scopedFileName &&
+              !tab.isDirty,
+          );
+          await vscode.window.tabGroups.close(sourceTabs);
         },
       ),
       vscode.window.registerCustomEditorProvider(
