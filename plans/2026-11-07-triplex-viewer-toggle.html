@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Triplex viewer toggle</title>
+<style>
+  :root {
+    --bg: #f6f3ec; --fg: #1b1a17; --muted: #66625a; --line: #d4cdbf; --card: #fffdf8;
+    --accent: #c4452c; --accent-soft: #f6dcd3; --cool: #0d7480; --cool-soft: #d6ecec;
+    --warn: #8a6500; --warn-soft: #f4e6bb;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151612; --fg: #eeeadf; --muted: #a39f92; --line: #3d3c35; --card: #1f201b;
+      --accent: #ff7a5e; --accent-soft: #4a2820; --cool: #73d0d8; --cool-soft: #183a3d;
+      --warn: #e6c45f; --warn-soft: #3f3512;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151612; --fg: #eeeadf; --muted: #a39f92; --line: #3d3c35; --card: #1f201b;
+    --accent: #ff7a5e; --accent-soft: #4a2820; --cool: #73d0d8; --cool-soft: #183a3d;
+    --warn: #e6c45f; --warn-soft: #3f3512;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.6 Georgia, "Times New Roman", serif; }
+  main { max-width: 920px; margin: 0 auto; padding: 40px 16px 80px; }
+  h1 { font-size: clamp(28px, 5vw, 42px); line-height: 1.1; margin: 0 0 10px; }
+  h2 { font: 700 13px/1.3 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--accent);
+       border-bottom: 2px solid var(--fg); padding-bottom: 6px; margin: 44px 0 18px; }
+  h3 { font-size: 19px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; }
+  code { font: 13.5px var(--mono); background: var(--card); border: 1px solid var(--line); padding: 0 4px; }
+  .lede { font-size: 20px; color: var(--muted); max-width: 720px; }
+  .meta { font: 12px/1.5 var(--mono); color: var(--muted); margin-bottom: 26px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+  .card.in { border-left: 4px solid var(--cool); }
+  .card.out { border-left: 4px solid var(--accent); }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--card); }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { font: 700 11px/1.3 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  td.id { font: 12px var(--mono); color: var(--cool); white-space: nowrap; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); }
+  .flow { display: grid; gap: 8px; }
+  .step { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: start; }
+  .step .n { width: 34px; height: 34px; display: grid; place-items: center; background: var(--fg); color: var(--bg);
+             font: 700 13px var(--mono); }
+  .step .body { background: var(--card); border: 1px solid var(--line); padding: 10px 12px; }
+  .yes { color: var(--cool); font-weight: 700; } .no { color: var(--accent); font-weight: 700; }
+  .phase { background: var(--card); border: 1px solid var(--line); padding: 18px; margin-bottom: 14px; position: relative; }
+  .phase .tag { font: 700 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .phase .done { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  .risk { background: var(--warn-soft); border-left: 4px solid var(--warn); padding: 12px 14px; margin-bottom: 10px; }
+  .risk strong { color: var(--warn); }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: ui-monospace, Menlo, monospace; font-size: 12px; fill: var(--fg); }
+  svg .box { fill: var(--card); stroke: var(--line); stroke-width: 1.5; }
+  svg .hot { fill: var(--cool-soft); stroke: var(--cool); }
+  svg .arrow { stroke: var(--muted); stroke-width: 1.5; fill: none; marker-end: url(#a); }
+  svg .sub { fill: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="meta">Plan · 2026-11-07 · ctrlShiftBryan/triplex (BA Triplex fork)</p>
+  <h1>Triplex viewer toggle</h1>
+  <p class="lede">A global toggle that opens 3D component files straight in the Triplex viewer, two per-file palette commands to switch between source and viewer, and a marker comment, kept up to date by a check built on Triplex's own 3D detection, that decides which files auto-open.</p>
+
+  <h2>Goal and boundaries</h2>
+  <div class="grid">
+    <div class="card in">
+      <h3>In scope</h3>
+      <ul>
+        <li>The <code>baTriplex.openInViewer</code> setting and the <b>BA Toggle - Triplex</b> command, modeled on BA Toggle - Markdown (ctrlShiftBryan/ba-vscode-ext).</li>
+        <li><b>BA: Show Source</b> and <b>BA: Show Triplex Viewer</b> for the current file.</li>
+        <li>The <code>// @triplex-viewer</code> marker and the <code>ba-triplex-mark</code> CLI (<code>--check</code> / <code>--write</code>).</li>
+        <li>Installing the CLI and the extension on every machine.</li>
+        <li>A consuming project adopting the markers, a check step and an agent rule (tracked privately in that project).</li>
+      </ul>
+    </div>
+    <div class="card out">
+      <h3>Out of scope</h3>
+      <ul>
+        <li>The VS Code e2e tests: no display on the build machine, and they already expect the old split layout (from 1c1c8d74). Left as they are.</li>
+        <li>A status bar item for the mode (a notification on flip only).</li>
+        <li>Persisting per-file choices across restarts.</li>
+        <li>Publishing the CLI to npm.</li>
+        <li>Global agent-rule changes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>How a file open is decided</h2>
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div class="body">A <b>new</b> source tab opens (Explorer, Quick Open, a link). Switching to an already-open tab never triggers anything.</div></div>
+    <div class="step"><span class="n">2</span><div class="body">Is <code>baTriplex.openInViewer</code> on? <span class="no">No</span> → stay on source.</div></div>
+    <div class="step"><span class="n">3</span><div class="body">Has this file a per-file choice this session (Show Source / Show Triplex Viewer / Go To Definition)? <span class="yes">Yes</span> → follow it.</div></div>
+    <div class="step"><span class="n">4</span><div class="body">Do the file's leading comments (before the first import) contain <code>// @triplex-viewer</code>? <span class="no">No</span> → stay on source.</div></div>
+    <div class="step"><span class="n">5</span><div class="body">Open the viewer in place of the source tab (same group, unsaved tabs untouched), showing the default export, else the last named export.</div></div>
+  </div>
+
+  <h2>How markers get there</h2>
+  <svg viewBox="0 0 860 190" role="img" aria-label="The CLI runs Triplex's babel plugin over each file, follows child components through imports, and adds the marker when the shown export is 3D">
+    <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="currentColor" style="color:var(--muted)"/></marker></defs>
+    <rect class="box" x="10" y="60" width="150" height="66"/>
+    <text x="22" y="88">Scene.tsx</text><text class="sub" x="22" y="108">no marker yet</text>
+    <rect class="box hot" x="215" y="20" width="200" height="146"/>
+    <text x="228" y="46">ba-triplex-mark</text>
+    <text class="sub" x="228" y="70">babel plugin → triplexMeta.root</text>
+    <text class="sub" x="228" y="92">root inherits from child?</text>
+    <text class="sub" x="228" y="110">→ follow the import:</text>
+    <text class="sub" x="228" y="128">Stage → Model</text>
+    <text class="sub" x="228" y="150">= "react-three-fiber"</text>
+    <rect class="box" x="470" y="20" width="170" height="60"/>
+    <text x="482" y="45">--check</text><text class="sub" x="482" y="64">exit 1, list files</text>
+    <rect class="box" x="470" y="106" width="170" height="60"/>
+    <text x="482" y="131">--write</text><text class="sub" x="482" y="150">add marker, never remove</text>
+    <rect class="box" x="690" y="106" width="160" height="60"/>
+    <text x="702" y="131">// @triplex-viewer</text><text class="sub" x="702" y="150">line 1 of Scene.tsx</text>
+    <path class="arrow" d="M160,93 L213,93"/>
+    <path class="arrow" d="M415,60 L468,50"/>
+    <path class="arrow" d="M415,126 L468,136"/>
+    <path class="arrow" d="M640,136 L688,136"/>
+  </svg>
+  <p>Agents can also add the marker by hand. <code>// @triplex-viewer-ignore</code> keeps a 3D file out, and <code>--check</code> stays green for it.</p>
+
+  <h2>Decisions</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>ID</th><th>Decision</th><th>Consequence</th></tr></thead>
+    <tbody>
+      <tr><td class="id">state-1/2</td><td>Global mode is the user setting <code>baTriplex.openInViewer</code>, default off.</td><td>Visible in Settings and settings.json, syncs with Settings Sync. Fresh installs behave like today.</td></tr>
+      <tr><td class="id">trigger-1</td><td>Acts only when a new source tab opens.</td><td>A tab deliberately kept as source never flips back when you click it.</td></tr>
+      <tr><td class="id">comp-1</td><td>Auto-open shows the default export, else the last named export.</td><td>Same as the button today; switch components inside the viewer.</td></tr>
+      <tr><td class="id">cmds-1, naming-1</td><td><b>BA Toggle - Triplex</b>, <b>BA: Show Source</b>, <b>BA: Show Triplex Viewer</b>.</td><td>Typing "BA" in the palette finds them, next to BA Toggle - Markdown.</td></tr>
+      <tr><td class="id">override-1</td><td>Per-file choices live in memory until VS Code restarts.</td><td>No stored state; a fresh window follows the global mode.</td></tr>
+      <tr><td class="id">toggle-1</td><td>Flipping the toggle reopens open marked tabs in the new mode and clears per-file choices.</td><td>The window matches the mode right away; tabs with unsaved changes stay put.</td></tr>
+      <tr><td class="id">gotodef-1</td><td>Go To Definition opens source and marks the file as source for the session.</td><td>Jumping to code from the viewer still works with the toggle on.</td></tr>
+      <tr><td class="id">status-1</td><td>A notification on flip.</td><td>Least code; nothing shows the mode later.</td></tr>
+      <tr><td class="id">elig-5</td><td>The marker comment is the gate; the classifier adds missing markers; agents can add them by hand.</td><td>Opening a file reads only its leading comments: instant, no manifest to drift.</td></tr>
+      <tr><td class="id">mark-1</td><td>Marker: <code>// @triplex-viewer</code> in the leading comments.</td><td>Greppable, ignored by every tool, easy for agents.</td></tr>
+      <tr><td class="id">check-1</td><td>Formatter-like CLI: <code>--check</code> fails on missing markers, <code>--write</code> adds them.</td><td>Catches agent edits made outside VS Code.</td></tr>
+      <tr><td class="id">class-1, exp-1</td><td>A file is marked when the export auto-open would show is classified <code>react-three-fiber</code>.</td><td>Auto-open never lands on a DOM component; DOM shells with a <code>&lt;Canvas&gt;</code> are not marked.</td></tr>
+      <tr><td class="id">button-3</td><td>Title-bar button and code lens show on any file with an exported component.</td><td>Any component still opens by hand; the button stops showing on files with nothing to render.</td></tr>
+      <tr><td class="id">palette-1</td><td>Show Triplex Viewer only on a source tab with an exported component; Show Source only on a viewer tab.</td><td>Context keys set from the active tab drive the <code>when</code> clauses.</td></tr>
+      <tr><td class="id">auth-1</td><td><code>--write</code> only adds; <code>// @triplex-viewer-ignore</code> opts out.</td><td>Hand markers always survive.</td></tr>
+      <tr><td class="id">dist-1, mk-dist-2</td><td><code>scripts/install-fork-vsce.sh</code> always installs the CLI as <code>~/.local/bin/ba-triplex-mark</code>, then the extension into a Remote-SSH server, else the local <code>code</code> CLI, else skips with a note.</td><td>One command on every machine, whether VS Code runs locally or over Remote-SSH.</td></tr>
+      <tr><td class="id">rule-2</td><td>The agent rule for the marker goes in the AGENTS.md of each project that uses Triplex.</td><td>Only projects with 3D components carry it.</td></tr>
+      <tr><td class="id">migrate-1</td><td>The first consuming project adopts the markers, a <code>--check</code> step in its own gate and the rule as a follow-on phase, tracked in that project.</td><td>Auto-open works there the day this lands.</td></tr>
+      <tr><td class="id">test-1</td><td>Vitest unit tests, then a manual check after install.</td><td>Logic is guarded; editor behavior is checked by hand.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Implementation</h2>
+
+  <div class="phase">
+    <span class="tag">Phase 1 · triplex fork</span>
+    <h3>The marker check: <code>ba-triplex-mark</code></h3>
+    <ul>
+      <li>New package <code>packages/ba-triplex-mark</code> with a bin. It imports Triplex's babel plugin from <code>packages/@triplex/client/src/plugins/babel-plugin.ts</code> (not exported from the published package) and runs it with <code>babel.transformSync</code>.</li>
+      <li>Find the export auto-open would show (the same rule as <code>getFallbackExportName</code>: default export, else last named export) and read its <code>triplexMeta.root</code>.</li>
+      <li>When the root inherits from a child component, resolve the child's import (relative paths, explicit extensions, tsconfig paths and package.json <code>imports</code> aliases) and classify it, with a cache and cycle guard.</li>
+      <li>Shared marker helpers (read leading comments, has marker, has ignore, add marker) usable from both the CLI and the extension.</li>
+      <li><code>--check &lt;paths&gt;</code>: exit 1 and list each 3D file missing a marker. <code>--write &lt;paths&gt;</code>: add <code>// @triplex-viewer</code> as line 1 (before the first import), never remove a marker, skip files with the ignore comment.</li>
+    </ul>
+    <p class="done">Done when the unit tests in phase 4 for the classifier and CLI pass and <code>pnpm typecheck</code>, <code>pnpm lint</code> are green on Node 22.</p>
+  </div>
+
+  <div class="phase">
+    <span class="tag">Phase 2 · triplex fork</span>
+    <h3>The extension: toggle, commands, auto-open</h3>
+    <ul>
+      <li><code>apps/vscode/package.json</code>: the <code>baTriplex.openInViewer</code> setting (boolean, default false) and the three commands; <code>when</code> clauses on context keys for the palette, the title-bar button and the code lens.</li>
+      <li>A mode module with the decision logic as a pure function (inputs: setting, per-file choice, marker, tab event) so it unit-tests without VS Code.</li>
+      <li>Listen for newly opened source tabs (tabGroups changes); when the decision says viewer, reuse the <code>triplex.start</code> path from 1c1c8d74 so the viewer replaces the source tab.</li>
+      <li>The toggle flips the setting, shows a notification, clears per-file choices and reopens open marked tabs in the new mode (dirty tabs skipped).</li>
+      <li>Show Source / Show Triplex Viewer swap the current tab and record the per-file choice in memory. <code>triplex.open-file</code> (Go To Definition) records "source" for its target.</li>
+      <li>Set context keys on active-editor change: has exported component (inferExports), is viewer tab.</li>
+    </ul>
+    <p class="done">Done when the mode-decision tests pass and the extension typechecks and lints.</p>
+  </div>
+
+  <div class="phase">
+    <span class="tag">Phase 3 · triplex fork</span>
+    <h3>Installing on every machine</h3>
+    <ul>
+      <li><code>scripts/install-fork-vsce.sh</code> builds the CLI and installs it as <code>~/.local/bin/ba-triplex-mark</code> before the extension step.</li>
+      <li>Install the extension into the newest <code>~/.vscode-server</code> code-server if present, else the local <code>code</code> CLI, else print a note and skip. Keep the Node 22 re-exec and the TMPDIR fix.</li>
+      <li>Update <code>apps/vscode/README.dev.md</code> "Installing the fork" with the CLI and the toggle.</li>
+    </ul>
+    <p class="done">Done when the script runs and <code>ba-triplex-mark --help</code> works from a fresh shell.</p>
+  </div>
+
+  <div class="phase">
+    <span class="tag">Phase 4 · triplex fork</span>
+    <h3>Tests</h3>
+    <ul>
+      <li>Marker detection: leading comments only, the ignore comment, files with license headers or directives.</li>
+      <li>The classifier on fixtures: direct three.js tags, R3F hooks, a DOM component, a component rendering <code>&lt;Canvas&gt;</code>, a multi-export file, and a cross-file chain through two wrapper components.</li>
+      <li>CLI <code>--check</code> exit codes and output; <code>--write</code> adds once, is idempotent, never removes.</li>
+      <li>The mode decision table: setting × per-file choice × marker × new vs. existing tab, and Go To Definition.</li>
+      <li>Then the manual check list for Bryan, posted on the issue.</li>
+    </ul>
+    <p class="done">Done when <code>pnpm test</code> is green on Node 22 (e2e excluded, as today).</p>
+  </div>
+
+
+  <h2>Risks</h2>
+  <div class="risk"><strong>Import resolution.</strong> Projects use package <code>imports</code> aliases and explicit <code>.tsx</code> extensions. The classifier must resolve these, or chained components classify wrong. Covered by the cross-file fixture; the first real project run is the confirmation.</div>
+  <div class="risk"><strong>Babel plugin from source.</strong> The CLI depends on an internal file of <code>@triplex/client</code>; upstream merges may move it. Keep the import in one place.</div>
+  <div class="risk"><strong>Tab-open events.</strong> VS Code has no "file about to open" hook, so auto-open swaps a tab right after it opens; a brief flash of source is expected.</div>
+  <div class="risk"><strong>Check on other machines.</strong> A project's check fails on machines where the install script hasn't run, until someone runs it there.</div>
+</main>
+</body>
+</html>
