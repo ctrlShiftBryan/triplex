@@ -1,6 +1,6 @@
 {
   "name": "triplex-vsce",
-  "displayName": "Triplex for VS Code (fork)",
+  "displayName": "BA Triplex",
   "version": "0.72.5",
   "private": true,
   "description": "Your visual workspace for React / Three Fiber.",
