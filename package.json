@@ -23,7 +23,8 @@
     "install-git-hooks": "husky install",
     "lint": "eslint ./ --cache",
     "test": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "ai-docs:publish": "bash .claude/skills/ai-docs/scripts/publish.sh"
   },
   "lint-staged": {
     "*.{ts,tsx}": "eslint --cache --fix"

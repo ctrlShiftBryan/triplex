@@ -1,0 +1,53 @@
+{
+  "branch": "ai-docs",
+  "repo": "ctrlShiftBryan/triplex",
+  "pagesUrl": "https://ctrlshiftbryan.github.io/triplex",
+  "worldReadable": true,
+  "title": "triplex docs",
+  "types": [
+    {
+      "dir": "plans",
+      "label": "Plans & design docs",
+      "holds": "implementation plans, proposals, design docs, decisions"
+    },
+    {
+      "dir": "incidents",
+      "label": "Incidents",
+      "holds": "outage timelines, root causes, postmortems"
+    },
+    {
+      "dir": "investigations",
+      "label": "Investigations & troubleshooting",
+      "holds": "bug diagnoses, data checks, log triage, troubleshooting"
+    },
+    {
+      "dir": "research",
+      "label": "Research",
+      "holds": "vendor, API and approach comparisons"
+    },
+    {
+      "dir": "explainers",
+      "label": "Explainers",
+      "holds": "how a system, feature or change works; testing guides"
+    },
+    {
+      "dir": "prototypes",
+      "label": "Prototypes",
+      "holds": "throwaway UI prototypes (`<slug>.prototype.html`)"
+    }
+  ],
+  "allowedDocPaths": [
+    "docs/",
+    ".claude/",
+    ".github/",
+    "AGENTS.md/CLAUDE.md files",
+    "README/CHANGELOG/LICENSE/CONTRIBUTING files",
+    "public/ asset folders",
+    "test fixtures",
+    "packages/@triplex/editor/",
+    "apps/vscode/",
+    "packages/create-triplex-project/templates/",
+    "runbooks/"
+  ],
+  "prExplainerDir": "html-explainers"
+}

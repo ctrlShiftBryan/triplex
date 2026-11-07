@@ -49,3 +49,6 @@ yarn-error.log*
 
 # Electron
 **/targets
+
+# Generated docs staged for the ai-docs branch (ai-docs skill)
+/ai-docs/
